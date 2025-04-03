@@ -1,8 +1,8 @@
 # 🚀 Skydash.NET - Auto Transfer Token on TEA Sepolia  
-![GitHub repo size](https://img.shields.io/github/repo-size/adryan089/eat-auto?style=flat-square)
-![GitHub stars](https://img.shields.io/github/stars/adryan089/eat-auto?style=flat-square)
-![GitHub forks](https://img.shields.io/github/forks/adryan089/eat-auto?style=flat-square)
-![GitHub license](https://img.shields.io/github/license/adryan089/eat-auto?style=flat-square)
+![GitHub repo size](https://img.shields.io/github/repo-size/adryan089/aet-auto?style=flat-square)
+![GitHub stars](https://img.shields.io/github/stars/adryan089/aet-auto?style=flat-square)
+![GitHub forks](https://img.shields.io/github/forks/adryan089/aet-auto?style=flat-square)
+![GitHub license](https://img.shields.io/github/license/adryan089/aet-auto?style=flat-square)
 
 > **Menggunakan script ini berarti memahami segala risiko yang mungkin terjadi.**  
 > **Thanks Ashev!** 💙  

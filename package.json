@@ -1,0 +1,20 @@
+{
+  "name": "skydash-auto-tx-tea",
+  "version": "1.12.1",
+  "description": "Auto TX tea with special feature",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.8.4",
+    "chalk": "^5.4.1",
+    "dotenv": "^16.4.7",
+    "ethers": "^6.13.5",
+    "figlet": "^1.8.0",
+    "gradient-string": "^3.0.0"
+  }
+}

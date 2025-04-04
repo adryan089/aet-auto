@@ -5,20 +5,20 @@
 ![GitHub license](https://img.shields.io/github/license/adryan089/aet-auto?style=flat-square)
 
 > **Menggunakan script ini berarti memahami segala risiko yang mungkin terjadi.**  
-> **Thanks clwkevin! for Wallet Database** 💙  
+> **Thanks Ashev!** 💙  
 
 ---
 
 ## ✨ Fitur Utama  
-✅ **Auto Transfer Custom Token** 
-✅ **Auto Transfer TEA Native Token**
-✅ **Batas maksimal transaksi 98-150 kali/hari**  
-✅ **Auto pause & restart otomatis jam 00:00 UTC / 07:00 WIB**  
-✅ **Delay random antar transaksi** untuk keamanan & anti-bot detection  
-✅ **Alamat tujuan otomatis diambil dari sumber eksternal**  
-✅ **Jumlah token yang dikirim bersifat acak**  
-✅ **Support multi wallet dan multi CA**  
-✅ **Notifikasi via Telegram Bot (optional)**
+✅ Auto Transfer Custom Token  
+✅ Auto Transfer TEA Native Token  
+✅ Batas maksimal transaksi 98-150 kali/hari  
+✅ Auto pause & restart otomatis jam 00:00 UTC / 07:00 WIB  
+✅ Delay random antar transaksi untuk keamanan & anti-bot detection  
+✅ Alamat tujuan otomatis diambil dari sumber eksternal  
+✅ Jumlah token yang dikirim bersifat acak  
+✅ Support multi wallet dan multi CA  
+✅ Notifikasi via Telegram Bot (optional)
 
 ---
 
@@ -27,7 +27,7 @@ Sebelum menjalankan script, pastikan sudah terinstal:
 - **Node.js** v18+ ✅  
 - **NPM** ✅  
 - **Wallet dengan Faucet TEA** ✅  
-- **Contract Address Token hasil Deploy** ✅
+- **Wallet yang sudah deploy token** ✅
 
 ---
 
@@ -80,14 +80,14 @@ Untuk mendapatkan notifikasi otomatis via Telegram:
 
 - Buat bot baru di [@BotFather](https://t.me/BotFather) dan salin token-nya.
 - Dapatkan `chat_id` dari user atau grup tujuan, bisa pakai bot seperti [@userinfobot](https://t.me/userinfobot).
-- Buat file baru bernama `.env` dan isi dengan :
+- Buat file baru bernama `.env` lalu isi dengan :
 ```bash
-BOT_TOKEN=bottokenlu
-CHAT_ID=chatidlu
+BOT_TOKEN=token bot lo
+CHAT_ID=chat id lo
 ```
 - Simpan file tersebut di root folder project.
 
-Jika file `telegram.json` tidak ditemukan, script tetap jalan tapi tanpa notifikasi.
+Jika file `.env` tidak ditemukan, script tetap jalan tapi tanpa notifikasi.
 
 ---
 
@@ -99,10 +99,11 @@ node main.js
 
 ---
 
-## 📜 License
+## 📜 Lisensi
+
 Distribusi proyek ini menggunakan lisensi MIT License.
 
-```bash
+```
 MIT License
 
 Copyright (c) 2025 Skydash.NET
@@ -125,3 +126,4 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+

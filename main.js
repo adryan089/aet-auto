@@ -92,7 +92,7 @@ async function checkNativeBalance(walletObj) {
     const balance = await provider.getBalance(wallet.address);
     console.log(chalk.blue(`[TEA BALANCE] ${wallet.address} => ${ethers.formatEther(balance)} TEA`));
   } catch (err) {
-    console.log(chalk.red(`❌ Gagal cek saldo native untuk ${walletObj.address}: ${err.message}`));
+    console.log(chalk.red(`❌ Gagal cek saldo TEA untuk ${walletObj.address}: ${err.message}`));
   }
 }
 
@@ -121,6 +121,12 @@ function randomNativeAmount(balance) {
   return ethers.parseEther(amount);
 }
 
+// Fungsi delay acak untuk jeda transaksi
+async function randomDelay() {
+  const delay = Math.floor(Math.random() * (90 - 30 + 1)) + 30;
+  console.log(chalk.gray(`⏳ Delay ${delay} detik...`));
+  await new Promise((resolve) => setTimeout(resolve, delay * 1000));
+}
 // 🚀 Kirim token CA
 async function sendToken(walletObj, to) {
   try {
@@ -129,16 +135,15 @@ async function sendToken(walletObj, to) {
     const tokenContract = new ethers.Contract(walletObj.tokenAddress, erc20Abi, wallet);
     const amount = randomTokenAmount();
     const tx = await tokenContract.transfer(to, amount);
-    const logText = `[Token] ${wallet.address} => ${to} | TX: ${tx.hash} | Amount: ${ethers.formatUnits(amount, 18)}`;
     console.log(chalk.green(`🎯 [Token] ${wallet.address} to ${to}`));
     console.log(chalk.green(`🎯 [Token] TX : ${tx.hash}`));
     console.log(chalk.green(`🎯 [Token] Amount : ${ethers.formatUnits(amount, 18)}`));
     await sendTelegramMessage(`🟢 Token Transfer Success!
 
-      🔐 From: \`${wallet.address}\`
-      🎯 To: \`${to}\`
-      💵 Amount: \`${ethers.formatUnits(amount, 18)} tokens\`
-      🔗 TX: (https://sepolia.tea.xyz/tx/${tx.hash})`);
+      🔐 From : \`${wallet.address}\`
+      🎯 To : \`${to}\`
+      💵 Amount : \`${ethers.formatUnits(amount, 18)} tokens\`
+      🔗 TX : (https://sepolia.tea.xyz/tx/${tx.hash})`);
     await tx.wait();
   } catch (err) {
     console.log(chalk.red(`❌ Gagal kirim token CA dari ${walletObj.address}: ${err.message}`));
@@ -157,10 +162,10 @@ async function sendNative(walletObj, to) {
     console.log(chalk.cyan(`🎯 [TEA] Amount : ${ethers.formatUnits(amount, 18)}`));
     await sendTelegramMessage(`🟢 TEA Token Transfer Success!
 
-      🔐 From: \`${wallet.address}\`
-      🎯 To: \`${to}\`
-      💵 Amount: \`${ethers.formatUnits(amount, 18)} tokens\`
-      🔗 TX: (https://sepolia.tea.xyz/tx/${tx.hash})`);
+      🔐 From : \`${wallet.address}\`
+      🎯 To : \`${to}\`
+      💵 Amount : \`${ethers.formatUnits(amount, 18)} tokens\`
+      🔗 TX : (https://sepolia.tea.xyz/tx/${tx.hash})`);
     await tx.wait();
   } catch (err) {
     console.log(chalk.red(`❌ Gagal kirim TEA token dari ${walletObj.address}: ${err.message}`));
@@ -172,34 +177,29 @@ async function runTransfers() {
   await checkAllBalances();
 
   const addresses = await getAddresses();
-  if (addresses.length === 0) return console.log(chalk.red("❌ Tidak ada alamat tujuan."));
+  if (addresses.length === 0) {
+    console.log(chalk.red("❌ Tidak ada alamat tujuan."));
+    return;
+  }
 
   while (true) {
     txCount = 0;
-    for (let i = 0; i < addresses.length; i++) {
-      const target = addresses[i];
-
-      for (let w = 0; w < wallets.length; w++) {
-        const wallet = wallets[w];
-
-        if (txCount >= MAX_TX_PER_DAY) {
-          console.log(chalk.yellow("⏸ Maksimal transaksi tercapai hari ini. Menunggu jam 07:00 WIB."));
-          break;
-        }
-
-        if (txCount % 2 === 0) {
-          await sendToken(wallet, target);
-        } else {
-          await sendNative(wallet, target);
-        }
-
-        txCount++;
-        const delay = Math.floor(Math.random() * (90 - 30 + 1)) + 30;
-        console.log(chalk.gray(`⏳ Delay ${delay} detik...`));
-        await new Promise((resolve) => setTimeout(resolve, delay * 1000));
+    
+    while (txCount < MAX_TX_PER_DAY) {
+      for (const wallet of wallets) {
+        
+        const target = addresses[txCount % addresses.length];
+        
+        await sendToken(wallet, target);
+        await randomDelay();
+        await sendNative(wallet, target);
+        await randomDelay();
+        
+        txCount += 2;
+        if (txCount >= MAX_TX_PER_DAY) break;
       }
     }
-
+  
     console.log(chalk.green("\n🎉 Semua transaksi hari ini selesai!"));
     await sendTelegramMessage("🎉 Semua transaksi token (Token + TEA) hari ini sudah selesai!");
     await waitUntilNextUTCReset();

@@ -6,103 +6,204 @@ import gradient from "gradient-string";
 import fs from "fs";
 import chalk from "chalk";
 
-// 🛠 Load network config
+// 🧼 Clear console biar bersih
+console.clear();
+
+// 🎨 Tampilan awal
+console.log(gradient.rainbow(figlet.textSync("Skydash.NET")));
+console.log(gradient.pastel("🚀 Auto Transfer Token & Native on TEA Sepolia"));
+console.log(chalk.cyan("⚠️ Use at your own risk. Don't cry later."));
+console.log(chalk.green("❤️ Thanks clwkevin! for wallet databases 🚀\n"));
+
+// 🧠 Load config jaringan
 const network = JSON.parse(fs.readFileSync("network.json"));
 const provider = new ethers.JsonRpcProvider(network.RPC_URL);
 
-// 📂 Load multi-wallet config
-const walletsConfig = JSON.parse(fs.readFileSync("wallets.json"));
+// 📁 Load semua wallet
+const wallets = JSON.parse(fs.readFileSync("wallets.json"));
 
-// 🎨 Tampilan awal
-console.log(gradient.pastel(figlet.textSync("Skydash.NET")));
-console.log(chalk.yellow("Auto Transfer Token on TEA Sepolia"));
-console.log(chalk.cyan("using this script means understanding the risks later."));
-console.log(chalk.green("Thanks Ashev! 🚀\n"));
-
-// ⏳ Aturan batas transaksi
-const MAX_TX_PER_DAY = Math.floor(Math.random() * (150 - 98 + 1)) + 98; // 98-150 transaksi
+// ⏳ Batas transaksi per hari
+const MAX_TX_PER_DAY = Math.floor(Math.random() * (150 - 98 + 1)) + 98;
 let txCount = 0;
 
-// 🔄 Atur waktu reset harian
-setInterval(() => {
-  console.log(chalk.blue("\n⏳ Reset transaksi harian..."));
-  txCount = 0;
-}, 24 * 60 * 60 * 1000); // Reset setiap 24 jam
+// Telegram Notif
+async function sendTelegramMessage(message) {
+  const botToken = process.env.BOT_TOKEN;
+  const chatId = process.env.CHAT_ID;
+  if (!botToken || !chatId) return;
 
-// 🔽 Fungsi fetch alamat tujuan
+  try {
+    await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      chat_id: chatId,
+      text: `📢 *Skydash Auto Transfer Info*
+
+${message}`,
+      parse_mode: "Markdown",
+      disable_web_page_preview: true
+    });
+  } catch (error) {
+    console.log(chalk.red("⚠️ Gagal kirim notifikasi Telegram"));
+  }
+}
+
+// ⌛ Waktu tunggu hingga jam 07:00 WIB (00:00 UTC)
+function waitUntilNextUTCReset() {
+  const now = new Date();
+  const nextReset = new Date();
+  nextReset.setUTCHours(0, 0, 0, 0);
+  if (now >= nextReset) {
+    nextReset.setUTCDate(nextReset.getUTCDate() + 1);
+  }
+  const delay = nextReset - now;
+  console.log(chalk.magenta(`⏱ Menunggu hingga reset berikutnya (${nextReset.toUTCString()})...`));
+  return new Promise((resolve) => setTimeout(resolve, delay));
+}
+
+// 🔽 Ambil address tujuan
 async function getAddresses() {
   try {
     const { data } = await axios.get(
       "https://raw.githubusercontent.com/clwkevin/LayerOS/main/addressteasepoliakyc.txt"
     );
     return data.split("\n").filter((addr) => addr.length === 42);
-  } catch (error) {
-    console.error(chalk.red("❌ Gagal mengambil alamat tujuan!"));
+  } catch (err) {
+    console.log(chalk.red("❌ Gagal ambil address tujuan!"));
     return [];
   }
 }
 
-// 🔀 Fungsi random jumlah token
-function randomAmount() {
+// 🔍 Cek saldo token CA
+async function checkTokenBalance(walletObj) {
+  try {
+    const wallet = new ethers.Wallet(walletObj.privateKey, provider);
+    const erc20Abi = ["function balanceOf(address owner) view returns (uint256)"];
+    const tokenContract = new ethers.Contract(walletObj.tokenAddress, erc20Abi, provider);
+    const balance = await tokenContract.balanceOf(wallet.address);
+    console.log(chalk.blue(`[Token BALANCE] ${wallet.address} => ${ethers.formatUnits(balance, 18)} tokens`));
+  } catch (err) {
+    console.log(chalk.red(`❌ Gagal cek saldo token untuk ${walletObj.address}: ${err.message}`));
+  }
+}
+
+// 🔍 Cek saldo native token
+async function checkNativeBalance(walletObj) {
+  try {
+    const wallet = new ethers.Wallet(walletObj.privateKey, provider);
+    const balance = await provider.getBalance(wallet.address);
+    console.log(chalk.blue(`[TEA BALANCE] ${wallet.address} => ${ethers.formatEther(balance)} TEA`));
+  } catch (err) {
+    console.log(chalk.red(`❌ Gagal cek saldo native untuk ${walletObj.address}: ${err.message}`));
+  }
+}
+
+// 🔍 Cek semua saldo sebelum mulai transfer
+async function checkAllBalances() {
+  console.log(chalk.yellow("\n🔍 Mengecek saldo semua wallet...\n"));
+  for (const wallet of wallets) {
+    await checkTokenBalance(wallet);
+    await checkNativeBalance(wallet);
+  }
+  console.log(chalk.yellow("\n✅ Pengecekan saldo selesai!\n"));
+}
+
+// 🔀 Random amount token CA
+function randomTokenAmount() {
   return ethers.parseUnits((Math.random() * (1 - 0.1) + 0.1).toFixed(6), 18);
 }
 
-// 🚀 Fungsi transfer token
-async function sendToken(tokenContract, to) {
+// 💰 Random amount native token
+function randomNativeAmount(balance) {
+  // Kirim antara 0.01 hingga 0.002 dan sisakan gas
+  const max = Math.min(Number(ethers.formatEther(balance)) - 0.002, 0.01);
+  const min = 0.002;
+  if (max <= min) return ethers.parseEther("0.002");
+  const amount = (Math.random() * (max - min) + min).toFixed(6);
+  return ethers.parseEther(amount);
+}
+
+// 🚀 Kirim token CA
+async function sendToken(walletObj, to) {
   try {
-    const amount = randomAmount();
+    const wallet = new ethers.Wallet(walletObj.privateKey, provider);
+    const erc20Abi = ["function transfer(address to, uint amount) public returns (bool)"];
+    const tokenContract = new ethers.Contract(walletObj.tokenAddress, erc20Abi, wallet);
+    const amount = randomTokenAmount();
     const tx = await tokenContract.transfer(to, amount);
-    console.log(chalk.green(`✅ Transaction success: ${tx.hash}`));
-    return tx.wait();
-  } catch (error) {
-    console.error(chalk.red(`❌ Gagal kirim ke ${to}: ${error.message}`));
+    const logText = `[Token] ${wallet.address} => ${to} | TX: ${tx.hash} | Amount: ${ethers.formatUnits(amount, 18)}`;
+    console.log(chalk.green(`🎯 [Token] ${wallet.address} to ${to}`));
+    console.log(chalk.green(`🎯 [Token] TX : ${tx.hash}`));
+    console.log(chalk.green(`🎯 [Token] Amount : ${ethers.formatUnits(amount, 18)}`));
+    await sendTelegramMessage(`🟢 Token Transfer Success!
+
+      🔐 From: \`${wallet.address}\`
+      🎯 To: \`${to}\`
+      💵 Amount: \`${ethers.formatUnits(amount, 18)} tokens\`
+      🔗 TX: (https://sepolia.tea.xyz/tx/${tx.hash})`);
+    await tx.wait();
+  } catch (err) {
+    console.log(chalk.red(`❌ Gagal kirim token CA dari ${walletObj.address}: ${err.message}`));
   }
 }
 
-// 🕐 Fungsi tunggu sampai tengah malam UTC (07:00 WIB)
-async function waitUntilMidnightUTC() {
-  const now = new Date();
-  const nextUTC = new Date(now);
-  nextUTC.setUTCHours(0, 0, 0, 0);
-  if (now >= nextUTC) nextUTC.setUTCDate(now.getUTCDate() + 1);
-  const waitTime = nextUTC.getTime() - now.getTime();
-  console.log(chalk.blue(`🕐 Menunggu hingga jam 07:00 WIB (${(waitTime / 1000 / 60).toFixed(1)} menit)...`));
-  return new Promise((res) => setTimeout(res, waitTime));
+// 🪙 Kirim native token
+async function sendNative(walletObj, to) {
+  try {
+    const wallet = new ethers.Wallet(walletObj.privateKey, provider);
+    const balance = await provider.getBalance(wallet.address);
+    const amount = randomNativeAmount(balance);
+    const tx = await wallet.sendTransaction({ to, value: amount });
+    console.log(chalk.cyan(`💸 [TEA] ${wallet.address} to ${to}`));
+    console.log(chalk.cyan(`🎯 [TEA] TX: ${tx.hash}`));
+    console.log(chalk.cyan(`🎯 [TEA] Amount : ${ethers.formatUnits(amount, 18)}`));
+    await sendTelegramMessage(`🟢 TEA Token Transfer Success!
+
+      🔐 From: \`${wallet.address}\`
+      🎯 To: \`${to}\`
+      💵 Amount: \`${ethers.formatUnits(amount, 18)} tokens\`
+      🔗 TX: (https://sepolia.tea.xyz/tx/${tx.hash})`);
+    await tx.wait();
+  } catch (err) {
+    console.log(chalk.red(`❌ Gagal kirim TEA token dari ${walletObj.address}: ${err.message}`));
+  }
 }
 
-// 🔄 Jalankan transaksi multi wallet
-(async function startTransfers() {
+// 🔄 Proses transaksi utama
+async function runTransfers() {
+  await checkAllBalances();
+
   const addresses = await getAddresses();
-  if (addresses.length === 0) {
-    return console.log(chalk.red("❌ Tidak ada alamat tujuan!"));
-  }
+  if (addresses.length === 0) return console.log(chalk.red("❌ Tidak ada alamat tujuan."));
 
-  for (const { PRIVATE_KEY, TOKEN_ADDRESS } of walletsConfig) {
-    const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
-    const tokenContract = new ethers.Contract(
-      TOKEN_ADDRESS,
-      ["function transfer(address to, uint amount) public returns (bool)"],
-      wallet
-    );
-
-    console.log(chalk.blueBright(`\n🔑 Wallet: ${wallet.address}`));
-    console.log(chalk.magenta(`🎯 Token: ${TOKEN_ADDRESS}\n`));
-
+  while (true) {
+    txCount = 0;
     for (let i = 0; i < addresses.length; i++) {
-      if (txCount >= MAX_TX_PER_DAY) {
-        console.log(chalk.blue("\n⏸ Maksimum transaksi tercapai! Menunggu jam reset..."));
-        await waitUntilMidnightUTC();
-        txCount = 0;
+      const target = addresses[i];
+
+      for (let w = 0; w < wallets.length; w++) {
+        const wallet = wallets[w];
+
+        if (txCount >= MAX_TX_PER_DAY) {
+          console.log(chalk.yellow("⏸ Maksimal transaksi tercapai hari ini. Menunggu jam 07:00 WIB."));
+          break;
+        }
+
+        if (txCount % 2 === 0) {
+          await sendToken(wallet, target);
+        } else {
+          await sendNative(wallet, target);
+        }
+
+        txCount++;
+        const delay = Math.floor(Math.random() * (90 - 30 + 1)) + 30;
+        console.log(chalk.gray(`⏳ Delay ${delay} detik...`));
+        await new Promise((resolve) => setTimeout(resolve, delay * 1000));
       }
-
-      await sendToken(tokenContract, addresses[i]);
-      txCount++;
-
-      const delay = Math.floor(Math.random() * (90 - 30 + 1)) + 30;
-      console.log(chalk.yellow(`⏳ Delay ${delay} detik...`));
-      await new Promise((res) => setTimeout(res, delay * 1000));
     }
-  }
 
-  console.log(chalk.green("\n🎉 Semua transaksi selesai untuk semua wallet!"));
-})();
+    console.log(chalk.green("\n🎉 Semua transaksi hari ini selesai!"));
+    await sendTelegramMessage("🎉 Semua transaksi token (Token + TEA) hari ini sudah selesai!");
+    await waitUntilNextUTCReset();
+  }
+}
+
+runTransfers();

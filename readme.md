@@ -5,7 +5,7 @@
 ![GitHub license](https://img.shields.io/github/license/adryan089/aet-auto?style=flat-square)
 
 > **Menggunakan script ini berarti memahami segala risiko yang mungkin terjadi.**  
-> **Thanks Ashev!** 💙  
+> **Thanks clwkevin! for wallet database** 💙  
 
 ---
 
@@ -32,18 +32,18 @@ Sebelum menjalankan script, pastikan sudah terinstal:
 ---
 
 ## 🔧 Cara Install  
-1⃣ **Clone repository**  
+1️⃣ **Clone repository**  
 ```bash
 git clone https://github.com/adryan089/aet-auto.git
 cd aet-auto
 ```
 
-2⃣**Install dependencies**
+2️⃣ **Install dependencies**
 ```bash
 npm install
 ```
 
-3⃣ **Konfigurasi Wallet**
+3️⃣ **Konfigurasi Wallet**
 ```bash
 cp wallets.json.examples wallets.json
 ```
@@ -74,7 +74,7 @@ Lalu edit file ```wallets.json``` dan isi dengan data wallet dan token lo:
 ]
 ```
 
-4⃣ **Konfigurasi Telegram Bot (Opsional)**
+4️⃣ **Konfigurasi Telegram Bot (Opsional)**
 
 Untuk mendapatkan notifikasi otomatis via Telegram:
 

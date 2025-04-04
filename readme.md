@@ -16,6 +16,7 @@
 ✅ **Delay random antar transaksi** untuk keamanan & anti-bot detection  
 ✅ **Alamat tujuan otomatis diambil dari sumber eksternal**  
 ✅ **Jumlah token yang dikirim bersifat acak**  
+✅ **Support multi wallet dan multi CA**  
 
 ---
 

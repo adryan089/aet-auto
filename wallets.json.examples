@@ -1,0 +1,10 @@
+[
+    {
+      "PRIVATE_KEY": "0xYOUR_PRIVATE_KEY_1",
+      "TOKEN_ADDRESS": "0xYOUR_TOKEN_ADDRESS_1"
+    },
+    {
+      "PRIVATE_KEY": "0xYOUR_PRIVATE_KEY_2",
+      "TOKEN_ADDRESS": "0xYOUR_TOKEN_ADDRESS_2"
+    }
+]

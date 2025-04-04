@@ -9,8 +9,9 @@ import chalk from "chalk";
 // 🛠 Load network config
 const network = JSON.parse(fs.readFileSync("network.json"));
 const provider = new ethers.JsonRpcProvider(network.RPC_URL);
-const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-const tokenAddress = process.env.TOKEN_ADDRESS;
+
+// 📂 Load multi-wallet config
+const walletsConfig = JSON.parse(fs.readFileSync("wallets.json"));
 
 // 🎨 Tampilan awal
 console.log(gradient.pastel(figlet.textSync("Skydash.NET")));
@@ -47,39 +48,61 @@ function randomAmount() {
 }
 
 // 🚀 Fungsi transfer token
-async function sendToken(to) {
+async function sendToken(tokenContract, to) {
   try {
-    const erc20Abi = ["function transfer(address to, uint amount) public returns (bool)"];
-    const tokenContract = new ethers.Contract(tokenAddress, erc20Abi, wallet);
-
-    let amount = randomAmount();
-    let tx = await tokenContract.transfer(to, amount);
-    console.log(chalk.green(`✅ Transaction successfully: ${tx.hash}`));
-
+    const amount = randomAmount();
+    const tx = await tokenContract.transfer(to, amount);
+    console.log(chalk.green(`✅ Transaction success: ${tx.hash}`));
     return tx.wait();
   } catch (error) {
-    console.error(chalk.red(`❌ Gagal mengirim ke ${to}: ${error.message}`));
+    console.error(chalk.red(`❌ Gagal kirim ke ${to}: ${error.message}`));
   }
 }
 
-// 🔄 Jalankan transaksi dengan delay acak
+// 🕐 Fungsi tunggu sampai tengah malam UTC (07:00 WIB)
+async function waitUntilMidnightUTC() {
+  const now = new Date();
+  const nextUTC = new Date(now);
+  nextUTC.setUTCHours(0, 0, 0, 0);
+  if (now >= nextUTC) nextUTC.setUTCDate(now.getUTCDate() + 1);
+  const waitTime = nextUTC.getTime() - now.getTime();
+  console.log(chalk.blue(`🕐 Menunggu hingga jam 07:00 WIB (${(waitTime / 1000 / 60).toFixed(1)} menit)...`));
+  return new Promise((res) => setTimeout(res, waitTime));
+}
+
+// 🔄 Jalankan transaksi multi wallet
 (async function startTransfers() {
   const addresses = await getAddresses();
-  if (addresses.length === 0) return console.log(chalk.red("❌ Tidak ada alamat tujuan!"));
-
-  for (let i = 0; i < addresses.length; i++) {
-    if (txCount >= MAX_TX_PER_DAY) {
-      console.log(chalk.blue("\n⏸ Maksimum transaksi tercapai! Akan restart jam 07:00 WIB."));
-      return;
-    }
-
-    await sendToken(addresses[i]);
-    txCount++;
-
-    let delay = Math.floor(Math.random() * (90 - 30 + 1)) + 30;
-    console.log(chalk.yellow(`⏳ Menunggu ${delay} detik sebelum transaksi berikutnya...`));
-    await new Promise((resolve) => setTimeout(resolve, delay * 1000));
+  if (addresses.length === 0) {
+    return console.log(chalk.red("❌ Tidak ada alamat tujuan!"));
   }
 
-  console.log(chalk.green("\n🎉 Semua transaksi selesai!"));
+  for (const { PRIVATE_KEY, TOKEN_ADDRESS } of walletsConfig) {
+    const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
+    const tokenContract = new ethers.Contract(
+      TOKEN_ADDRESS,
+      ["function transfer(address to, uint amount) public returns (bool)"],
+      wallet
+    );
+
+    console.log(chalk.blueBright(`\n🔑 Wallet: ${wallet.address}`));
+    console.log(chalk.magenta(`🎯 Token: ${TOKEN_ADDRESS}\n`));
+
+    for (let i = 0; i < addresses.length; i++) {
+      if (txCount >= MAX_TX_PER_DAY) {
+        console.log(chalk.blue("\n⏸ Maksimum transaksi tercapai! Menunggu jam reset..."));
+        await waitUntilMidnightUTC();
+        txCount = 0;
+      }
+
+      await sendToken(tokenContract, addresses[i]);
+      txCount++;
+
+      const delay = Math.floor(Math.random() * (90 - 30 + 1)) + 30;
+      console.log(chalk.yellow(`⏳ Delay ${delay} detik...`));
+      await new Promise((res) => setTimeout(res, delay * 1000));
+    }
+  }
+
+  console.log(chalk.green("\n🎉 Semua transaksi selesai untuk semua wallet!"));
 })();

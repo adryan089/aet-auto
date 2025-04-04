@@ -39,6 +39,7 @@ cd aet-auto
 ```bash
 npm install
 ```
+<<<<<<< HEAD
 3️⃣ Konfigurasi .env
 ```bash
 cp .env.example .env
@@ -47,6 +48,38 @@ Lalu edit file ```.env``` dan isi dengan data wallet dan token lo :
 ```bash
 TOKEN_ADDRESS=contract_token_lo
 PRIVATE_KEY=privatekey_lo
+=======
+3️⃣ Konfigurasi Wallets
+```bash
+cp wallets.json.examples wallets.json
+```
+Lalu edit file ```wallet.json``` dan isi dengan data wallet dan token lo :
+1. jika ingin 1 wallet isi : 
+
+```bash
+[
+    {
+      "PRIVATE_KEY": "privatekeylu",
+      "TOKEN_ADDRESS": "CA Tokenlu"
+    }
+]
+```
+
+2. jika ingin multi wallet isi
+
+```bash
+[
+    {
+      "PRIVATE_KEY": "privatekey1",
+      "TOKEN_ADDRESS": "CA Token wallet 1"
+    },
+    {
+      "PRIVATE_KEY": "privatekey2",
+      "TOKEN_ADDRESS": "CA Token wallet 2"
+    }
+    dst..
+]
+>>>>>>> 3a24b18 (add multi wallet feature)
 ```
 
 ---

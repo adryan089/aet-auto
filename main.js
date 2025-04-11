@@ -23,8 +23,27 @@ const provider = new ethers.JsonRpcProvider(network.RPC_URL);
 const wallets = JSON.parse(fs.readFileSync("wallets.json"));
 
 // ⏳ Batas transaksi per hari
-const MAX_TX_PER_DAY = Math.floor(Math.random() * (150 - 98 + 1)) + 98;
+const MAX_TX_PER_DAY = Math.floor(Math.random() * (150 - 98 + 1)) + 98; //ubah jika ingin mengubah max tx/hari
 let txCount = 0;
+
+// ABI minimal buat dapetin info token
+const ERC20_ABI = [
+  "function name() view returns (string)",
+  "function symbol() view returns (string)"
+];
+
+// 🔍 Ambil info token
+async function getTokenInfo(tokenAddress) {
+  try {
+    const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+    const name = await tokenContract.name();
+    const symbol = await tokenContract.symbol();
+    return { name, symbol };
+  } catch (error) {
+    console.log(chalk.red(`❌ Gagal ambil info token untuk ${tokenAddress}`));
+    return { name: "Unknown", symbol: "UNKNOWN" };
+  }
+}
 
 // Telegram Notif
 async function sendTelegramMessage(message) {
@@ -72,14 +91,15 @@ async function getAddresses() {
   }
 }
 
-// 🔍 Cek saldo token CA
 async function checkTokenBalance(walletObj) {
   try {
     const wallet = new ethers.Wallet(walletObj.privateKey, provider);
     const erc20Abi = ["function balanceOf(address owner) view returns (uint256)"];
-    const tokenContract = new ethers.Contract(walletObj.tokenAddress, erc20Abi, provider);
+    const tokenAddress = walletObj.tokenAddress || network.CA_TOKEN;
+    const tokenContract = new ethers.Contract(tokenAddress, erc20Abi, provider);
     const balance = await tokenContract.balanceOf(wallet.address);
-    console.log(chalk.blue(`[Token BALANCE] ${wallet.address} => ${ethers.formatUnits(balance, 18)} tokens`));
+    const tokenInfo = await getTokenInfo(tokenAddress);
+    console.log(chalk.blue(`[Token Balance] ${wallet.address} => ${ethers.formatUnits(balance, 18)} ${tokenInfo.symbol}`));
   } catch (err) {
     console.log(chalk.red(`❌ Gagal cek saldo token untuk ${walletObj.address}: ${err.message}`));
   }
@@ -127,23 +147,26 @@ async function randomDelay() {
   console.log(chalk.gray(`⏳ Delay ${delay} detik...`));
   await new Promise((resolve) => setTimeout(resolve, delay * 1000));
 }
-// 🚀 Kirim token CA
 async function sendToken(walletObj, to) {
   try {
     const wallet = new ethers.Wallet(walletObj.privateKey, provider);
     const erc20Abi = ["function transfer(address to, uint amount) public returns (bool)"];
-    const tokenContract = new ethers.Contract(walletObj.tokenAddress, erc20Abi, wallet);
-    const amount = randomTokenAmount();
+    const tokenAddress = walletObj.tokenAddress || network.CA_TOKEN;
+    const tokenContract = new ethers.Contract(tokenAddress, erc20Abi, wallet);
+    const amount = randomTokenAmount(); 
+    const tokenInfo = await getTokenInfo(tokenAddress);
+
     const tx = await tokenContract.transfer(to, amount);
     console.log(chalk.green(`🎯 [Token] ${wallet.address} to ${to}`));
     console.log(chalk.green(`🎯 [Token] TX : ${tx.hash}`));
-    console.log(chalk.green(`🎯 [Token] Amount : ${ethers.formatUnits(amount, 18)}`));
+    console.log(chalk.green(`🎯 [Token] Amount : ${ethers.formatUnits(amount, 18)} (${tokenInfo.symbol})`));
+    
     await sendTelegramMessage(`🟢 Token Transfer Success!
-
-      🔐 From : \`${wallet.address}\`
-      🎯 To : \`${to}\`
-      💵 Amount : \`${ethers.formatUnits(amount, 18)} tokens\`
-      🔗 TX : (https://sepolia.tea.xyz/tx/${tx.hash})`);
+🔐 From : \`${wallet.address}\`
+🎯 To : \`${to}\`
+💵 Amount : \`${ethers.formatUnits(amount, 18)} (${tokenInfo.symbol})\`
+🔗 TX : https://sepolia.tea.xyz/tx/${tx.hash}`);
+    
     await tx.wait();
   } catch (err) {
     console.log(chalk.red(`❌ Gagal kirim token CA dari ${walletObj.address}: ${err.message}`));
@@ -164,7 +187,7 @@ async function sendNative(walletObj, to) {
 
       🔐 From : \`${wallet.address}\`
       🎯 To : \`${to}\`
-      💵 Amount : \`${ethers.formatUnits(amount, 18)} tokens\`
+      💵 Amount : \`${ethers.formatUnits(amount, 18)} TEA\`
       🔗 TX : (https://sepolia.tea.xyz/tx/${tx.hash})`);
     await tx.wait();
   } catch (err) {
@@ -189,7 +212,6 @@ async function runTransfers() {
       for (const wallet of wallets) {
         
         const target = addresses[txCount % addresses.length];
-        
         await sendToken(wallet, target);
         await randomDelay();
         await sendNative(wallet, target);
